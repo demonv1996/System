@@ -14,6 +14,12 @@ def get_connection():
     return sqlite3.connect("database.db")  # путь к твоей базе
 
 
+def get_athlete(athlete):
+    name = f"{athlete['full_name']}"
+    club = f"({athlete['club']})" if athlete['club'] else ""
+    return f"{name} {club}"
+
+
 def get_athletes_by_category(category_id):
     # Подгоняем под твою структуру: берем full_name и club
     with get_connection() as conn:
@@ -205,21 +211,28 @@ class BracketViewerWindow(QDialog):
 #                 rect.setPen(QPen(Qt.GlobalColor.black, 2))
 
                 # Текст спортсмена/bye/победителя
+                # Текст спортсмена/bye/победителя
                 text = ""
                 if r == 0:
                     athlete = self.slots[i]
                     if athlete:
-                        name = f"{athlete['full_name']}"
-                        club = f"({athlete['club']})" if athlete['club'] else ""
-                        text = f"{name} {club}"
-                if r == self.rounds:
+                        text = get_athlete(athlete)
+                elif r == self.rounds:
                     text = ""
+                else:
+                    if (self.slots[i * 2] is None) and not (self.slots[i * 2 + 1] is None):
+                        self.slots[i] = self.slots[i * 2 + 1]
+                        text = get_athlete(self.slots[i])
+                    elif not (self.slots[i * 2] is None) and (self.slots[i * 2 + 1] is None):
+                        self.slots[i] = self.slots[i * 2]
+                        text = get_athlete(self.slots[i])
+                    else:
+                        self.slots[i] = '-'
                 label = self.scene.addText(
                     text, QFont("Arial", 11, QFont.Weight.Bold))
                 label.setDefaultTextColor(Qt.GlobalColor.black)
                 label.setPos(x + 10, y + 6)
                 positions[(r, i)] = (x, y, rect, label)
-
         # Линии между блоками
         # for r in range(self.rounds):
         #     count = self.size // (2 ** r)
