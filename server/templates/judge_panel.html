@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Судья {{ judge }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            font-family: Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .half {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .red { background-color: #e74c3c; }
+        .blue { background-color: #3498db; }
+
+        .btn {
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 5em;
+            font-weight: bold;
+            border-bottom: 0.4px solid white;
+            height: 100%;
+            width: 100%;
+        }
+
+        .btn-3 { height: 20vh; }
+        .btn-2 { height: 20vh; }
+        .btn-1 { height: 60vh; }
+
+        .score-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #00000000;
+            color: white;
+            text-align: center;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        button {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-size: inherit;
+            font-weight: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="half blue">
+            <button class="btn btn-3" data-color="blue" data-points="3">3</button>
+            <button class="btn btn-2" data-color="blue" data-points="2">2</button>
+            <button class="btn btn-1" data-color="blue" data-points="1">1</button>
+        </div>
+        <div class="half red">
+            <button class="btn btn-3" data-color="red" data-points="3">3</button>
+            <button class="btn btn-2" data-color="red" data-points="2">2</button>
+            <button class="btn btn-1" data-color="red" data-points="1">1</button>
+        </div>
+    </div>
+
+    <div class="score-bar">
+        <span id="blue-score">Синий: {{ score.blue }}</span>
+        <span>Судья {{ judge }}</span>
+        <span id="red-score">Красный: {{ score.red }}</span>
+    </div>
+
+    <script>
+        const pin = "{{ pin }}";
+
+        document.querySelectorAll('button[data-color]').forEach(button => {
+            button.addEventListener('click', async () => {
+                const color = button.getAttribute('data-color');
+                const points = button.getAttribute('data-points');
+
+                try {
+                    const response = await fetch('/score', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pin, color, points })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        document.getElementById('blue-score').textContent = 'Синий: ' + result.score.blue;
+                        document.getElementById('red-score').textContent = 'Красный: ' + result.score.red;
+                    } else {
+                        alert('Ошибка: ' + result.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    
+                }
+            });
+        });
+    </script>
+    <!-- 1. Сначала залейте pin в глобал -->
+<!-- 1) Прокидываем PIN из Flask в окно -->
+<script>
+    window.pin = {{ pin|tojson }};
+</script>
+  
+  <!-- 2) Подключаем NoSleep из статической папки -->
+  <script src="{{ url_for('static', filename='NoSleep.min.js') }}"></script>
+  <script>
+    const noSleep = new NoSleep();
+    document.addEventListener('click', () => noSleep.enable(), { once: true });
+  </script>
+  
+  <!-- 3) Теперь твой код про /judge и /disconnect -->
+  <script>
+    (function(jpin) {
+      window.addEventListener("load", () => {
+        fetch(`/judge/${jpin}`, { method: "GET" });
+      });
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/disconnect",
+          JSON.stringify({ pin: jpin })
+        );
+      });
+    })(window.pin);
+  </script>
+
+
+  <script>
+    const allPin = "{{ pin }}";
+    
+    // 1) Функция, которая каждые 1‑2 сек. берёт свежий счёт
+    function refreshScores() {
+        fetch(`/my_score/${allPin}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('blue-score').textContent =
+                    'Синим: ' + data.blue;
+                document.getElementById('red-score').textContent =
+                    'Красным: ' + data.red;
+            })
+            .catch(() => {});          // можно вывести alert при отладке
+    }
+    
+    // 2) Запускаем сразу и затем по таймеру
+    refreshScores();
+    setInterval(refreshScores, 1500);
+    </script>
+
+  <script>
+    // Каждые 5 секунд отправляем пинг с PIN-кодом
+    setInterval(() => {
+        fetch("/judge_ping", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ pin: "{{ pin }}" })
+        });
+    }, 5000);
+</script>  
+</body>
+</html>
