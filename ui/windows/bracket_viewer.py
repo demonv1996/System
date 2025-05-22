@@ -215,10 +215,22 @@ class BracketViewerWindow(QDialog):
                 text = ""
                 if r == 0:
                     athlete = self.slots[i]
+                    # Если участник есть и у него есть пара — пишем имя
                     if athlete:
-                        text = get_athlete(athlete)
-                elif r == self.rounds:
-                    text = ""
+                        # Проверяем, есть ли пара (i четный — смотрим i+1, i нечетный — смотрим i-1)
+                        has_pair = False
+                        if i % 2 == 0:
+                            has_pair = (i + 1 < len(self.slots)
+                                        and self.slots[i + 1] is not None)
+                        else:
+                            has_pair = (
+                                i - 1 >= 0 and self.slots[i - 1] is not None)
+                        if has_pair:
+                            text = get_athlete(athlete)
+                        else:
+                            text = ""  # Пустой блок если нет пары
+                    else:
+                        text = ""
                 else:
                     if (self.slots[i * 2] is None) and not (self.slots[i * 2 + 1] is None):
                         self.slots[i] = self.slots[i * 2 + 1]
