@@ -103,6 +103,7 @@ class BracketViewerWindow(QDialog):
         if self.slots is None:
             self.slots = [None for _ in range(self.size)]
             self.slots[:n] = self.athletes
+
         self.rounds = int(math.log2(self.size))
 
     def draw_bracket(self):
@@ -226,11 +227,29 @@ class BracketViewerWindow(QDialog):
                             has_pair = (
                                 i - 1 >= 0 and self.slots[i - 1] is not None)
                         if has_pair:
-                            text = get_athlete(athlete)
+                            if isinstance(self.slots[i], dict):
+                                text = get_athlete(athlete)
                         else:
                             text = ""  # Пустой блок если нет пары
                     else:
                         text = ""
+                elif r == 1 and len([a for a in self.slots if a]) <= 3:
+                    left = self.slots[i * 2]
+                    right = self.slots[i * 2 + 1]
+                    # Если один есть, а другой пустой — проходит тот, кто есть
+                    if left is not None and right is None:
+                        self.slots[i] = left
+                        text = get_athlete(left)
+                    elif left is None and right is not None:
+                        self.slots[i] = right
+                        text = get_athlete(right)
+
+                    elif left is not None and right is not None:
+                        # Обычная пара, победитель будет выбран по ходу турнира
+                        text = " "  # Можно ничего не выводить, или писать "ПОБЕДИТЕЛЬ"
+                    else:
+                        self.slots[i] = None
+                        text = " "  # оба пустые
                 else:
                     if (self.slots[i * 2] is None) and not (self.slots[i * 2 + 1] is None):
                         self.slots[i] = self.slots[i * 2 + 1]
@@ -239,7 +258,7 @@ class BracketViewerWindow(QDialog):
                         self.slots[i] = self.slots[i * 2]
                         text = get_athlete(self.slots[i])
                     else:
-                        self.slots[i] = '-'
+                        self.slots[i] = ' '
                 label = self.scene.addText(
                     text, QFont("Arial", 11, QFont.Weight.Bold))
                 label.setDefaultTextColor(Qt.GlobalColor.black)
@@ -320,11 +339,29 @@ class BracketViewerWindow(QDialog):
                 self, "Выберите", "Выберите двух спортсменов для замены.")
 
     def randomize(self):
-        n = len([a for a in self.slots if a])
-        athletes = [a for a in self.slots if a]
+        if not hasattr(self, 'athletes_all'):
+            self.athletes_all = [a for a in self.slots if isinstance(
+                a, dict) and 'full_name' in a]
+
+        athletes = list(self.athletes_all)
         random.shuffle(athletes)
+
+        self.athletes = athletes
+
+        n = len(self.athletes)
+        if n <= 8:
+            self.size = 8
+        elif n <= 16:
+            self.size = 16
+        elif n <= 32:
+            self.size = 32
+        else:
+            self.size = 64
+
         self.slots = [None for _ in range(self.size)]
-        self.slots[:n] = athletes
+        self.slots[:n] = self.athletes
+        self.rounds = int(math.log2(self.size))
+
         self.draw_bracket()
 
     def save(self):

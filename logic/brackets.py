@@ -35,7 +35,7 @@ def round_robin_distribute(athletes):
 
 
 def generate_bracket(athletes):
-    print(athletes)
+    # print(athletes)
     n = len(athletes)
     # Подбираем размер сетки (8, 16, 32, 64)
     if n <= 8:
