@@ -34,6 +34,29 @@ def round_robin_distribute(athletes):
     return result
 
 
+def generate_bracket_random(athletes):
+
+    n = len(athletes)
+    if n <= 8:
+        size = 8
+    elif n <= 16:
+        size = 16
+    elif n <= 32:
+        size = 32
+    else:
+        size = 64
+
+    # 1. Просто перемешиваем
+    random.shuffle(athletes)
+    ordered = athletes
+
+    indices = SNAKE_SEEDING[size][:n]
+    slots = [None] * size
+    for i, idx in enumerate(indices):
+        slots[idx] = ordered[i]
+    return slots
+
+
 def generate_bracket(athletes):
     # print(athletes)
     n = len(athletes)

@@ -88,6 +88,7 @@ class BracketViewerWindow(QDialog):
         self.category_name = get_category_name(self.category_id)
         self.original_athletes = list(self.athletes)
         self.make_bracket()
+        self.make_full_bracket()
         self.draw_bracket()
 
     def make_bracket(self):
@@ -105,6 +106,31 @@ class BracketViewerWindow(QDialog):
             self.slots[:n] = self.athletes
 
         self.rounds = int(math.log2(self.size))
+
+    # генерация полной сетки - всех раундов
+    def make_full_bracket(self):
+        self.full_bracket = [None] * (self.rounds + 1)
+        self.full_bracket[0] = self.slots.copy()
+        for r in range(1, self.rounds + 1):
+            prev = self.full_bracket[r - 1]
+            count = self.size // (2 ** r)
+            self.full_bracket[r] = [None] * count
+            for i in range(count):
+                left = prev[i * 2]
+                right = prev[i * 2 + 1]
+                # Если один есть, а другой пустой — проходит тот, кто есть
+                if (left is not None and left != ' ') and right is None:
+                    self.full_bracket[r][i] = left
+                    prev[i * 2] = None
+                elif left is None and (right is not None and right != ' '):
+                    self.full_bracket[r][i] = right
+                    prev[i * 2 + 1] = None
+                elif left is not None and right is not None:
+                    # Обычная пара, победитель будет выбран по ходу турнира
+                    self.full_bracket[r][i] = " "
+                else:
+                    # оба пустые
+                    self.full_bracket[r][i] = None
 
     def draw_bracket(self):
         self.scene.clear()
@@ -213,52 +239,10 @@ class BracketViewerWindow(QDialog):
 
                 # Текст спортсмена/bye/победителя
                 # Текст спортсмена/bye/победителя
-                text = ""
-                if r == 0:
-                    athlete = self.slots[i]
-                    # Если участник есть и у него есть пара — пишем имя
-                    if athlete:
-                        # Проверяем, есть ли пара (i четный — смотрим i+1, i нечетный — смотрим i-1)
-                        has_pair = False
-                        if i % 2 == 0:
-                            has_pair = (i + 1 < len(self.slots)
-                                        and self.slots[i + 1] is not None)
-                        else:
-                            has_pair = (
-                                i - 1 >= 0 and self.slots[i - 1] is not None)
-                        if has_pair:
-                            if isinstance(self.slots[i], dict):
-                                text = get_athlete(athlete)
-                        else:
-                            text = ""  # Пустой блок если нет пары
-                    else:
-                        text = ""
-                elif r == 1 and len([a for a in self.slots if a]) <= 3:
-                    left = self.slots[i * 2]
-                    right = self.slots[i * 2 + 1]
-                    # Если один есть, а другой пустой — проходит тот, кто есть
-                    if left is not None and right is None:
-                        self.slots[i] = left
-                        text = get_athlete(left)
-                    elif left is None and right is not None:
-                        self.slots[i] = right
-                        text = get_athlete(right)
-
-                    elif left is not None and right is not None:
-                        # Обычная пара, победитель будет выбран по ходу турнира
-                        text = " "  # Можно ничего не выводить, или писать "ПОБЕДИТЕЛЬ"
-                    else:
-                        self.slots[i] = None
-                        text = " "  # оба пустые
-                else:
-                    if (self.slots[i * 2] is None) and not (self.slots[i * 2 + 1] is None):
-                        self.slots[i] = self.slots[i * 2 + 1]
-                        text = get_athlete(self.slots[i])
-                    elif not (self.slots[i * 2] is None) and (self.slots[i * 2 + 1] is None):
-                        self.slots[i] = self.slots[i * 2]
-                        text = get_athlete(self.slots[i])
-                    else:
-                        self.slots[i] = ' '
+                text = " "
+                athlete = self.full_bracket[r][i]
+                if athlete is not None and athlete != " ":
+                    text = get_athlete(athlete)
                 label = self.scene.addText(
                     text, QFont("Arial", 11, QFont.Weight.Bold))
                 label.setDefaultTextColor(Qt.GlobalColor.black)
@@ -333,6 +317,7 @@ class BracketViewerWindow(QDialog):
             i1, i2 = self.selected_indexes
             self.slots[i1], self.slots[i2] = self.slots[i2], self.slots[i1]
             self.selected_indexes = []
+            self.make_full_bracket()
             self.draw_bracket()
         else:
             QMessageBox.warning(
@@ -344,24 +329,13 @@ class BracketViewerWindow(QDialog):
                 a, dict) and 'full_name' in a]
 
         athletes = list(self.athletes_all)
+    # Просто перемешиваем — никакой разбивки по клубам
         random.shuffle(athletes)
 
-        self.athletes = athletes
-
-        n = len(self.athletes)
-        if n <= 8:
-            self.size = 8
-        elif n <= 16:
-            self.size = 16
-        elif n <= 32:
-            self.size = 32
-        else:
-            self.size = 64
-
-        self.slots = [None for _ in range(self.size)]
-        self.slots[:n] = self.athletes
-        self.rounds = int(math.log2(self.size))
-
+    # Готовим сетку по snake-seeding, без учета клубов!
+        from logic.brackets import generate_bracket_random
+        self.slots = generate_bracket_random(athletes)
+        self.make_full_bracket()
         self.draw_bracket()
 
     def save(self):
