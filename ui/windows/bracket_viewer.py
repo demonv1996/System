@@ -233,32 +233,36 @@ class BracketViewerWindow(QDialog):
                             text = ""  # Пустой блок если нет пары
                     else:
                         text = ""
-                elif r == 1 and len([a for a in self.slots if a]) <= 3:
+                elif r != self.rounds:
                     left = self.slots[i * 2]
                     right = self.slots[i * 2 + 1]
                     # Если один есть, а другой пустой — проходит тот, кто есть
-                    if left is not None and right is None:
+                    if (left is not None and left != ' ') and right is None:
                         self.slots[i] = left
                         text = get_athlete(left)
-                    elif left is None and right is not None:
+                    elif left is None and (right is not None and right != ' '):
                         self.slots[i] = right
                         text = get_athlete(right)
 
                     elif left is not None and right is not None:
                         # Обычная пара, победитель будет выбран по ходу турнира
+                        self.slots[i] = " "
                         text = " "  # Можно ничего не выводить, или писать "ПОБЕДИТЕЛЬ"
                     else:
                         self.slots[i] = None
                         text = " "  # оба пустые
                 else:
-                    if (self.slots[i * 2] is None) and not (self.slots[i * 2 + 1] is None):
-                        self.slots[i] = self.slots[i * 2 + 1]
-                        text = get_athlete(self.slots[i])
-                    elif not (self.slots[i * 2] is None) and (self.slots[i * 2 + 1] is None):
-                        self.slots[i] = self.slots[i * 2]
-                        text = get_athlete(self.slots[i])
+                    left = self.slots[i * 2]
+                    right = self.slots[i * 2 + 1]
+                    if (left is not None and left != ' ') and right is None:
+                        self.slots[i] = left
+                        text = get_athlete(left)
+                    elif left is None and (right is not None and right != ' '):
+                        self.slots[i] = right
+                        text = get_athlete(right)
                     else:
                         self.slots[i] = ' '
+                        text = ' '
                 label = self.scene.addText(
                     text, QFont("Arial", 11, QFont.Weight.Bold))
                 label.setDefaultTextColor(Qt.GlobalColor.black)
