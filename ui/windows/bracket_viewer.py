@@ -129,8 +129,8 @@ class BracketViewerWindow(QDialog):
                     # Обычная пара, победитель будет выбран по ходу турнира
                     self.full_bracket[r][i] = " "
                 else:
-                    text = " "  # оба пустые
-                    self.slots[i] = None
+                    # оба пустые
+                    self.full_bracket[r][i] = None
 
     def draw_bracket(self):
         self.scene.clear()
