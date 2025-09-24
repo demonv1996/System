@@ -1,4 +1,5 @@
 # если используешь свою функцию, оставь как есть
+from PyQt6.QtWidgets import QGraphicsRectItem
 import math
 from logic.brackets import generate_bracket
 from PyQt6.QtCore import Qt
@@ -49,6 +50,19 @@ def get_category_name(category_id):
 # from athletes_tab import get_athletes_by_category
 # from categories_tab import get_category_name
 
+class SelectableRect(QGraphicsRectItem):
+    def __init__(self, r, i, parent_window, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.r = r
+        self.i = i
+        self.parent_window = parent_window
+        self.setAcceptHoverEvents(True)
+        self.setFlag(QGraphicsRectItem.GraphicsItemFlag.ItemIsSelectable, True)
+
+    def mousePressEvent(self, event):
+        self.parent_window.on_block_clicked(self.r, self.i)
+        # super().mousePressEvent(event)
+
 
 class BracketViewerWindow(QDialog):
     def __init__(self, category_id, bracket, parent=None):
@@ -82,6 +96,16 @@ class BracketViewerWindow(QDialog):
 
         self.selected_indexes = []
         self.load_data()
+
+    def on_block_clicked(self, r, i):
+        idx = (r, i)
+        if idx in self.selected_indexes:
+            self.selected_indexes.remove(idx)
+        else:
+            self.selected_indexes.append(idx)
+        if len(self.selected_indexes) > 2:
+            self.selected_indexes = self.selected_indexes[-2:]
+        self.draw_bracket()
 
     def load_data(self):
         self.athletes = get_athletes_by_category(self.category_id)
@@ -172,73 +196,29 @@ class BracketViewerWindow(QDialog):
                 if r == 0:
                     y = y0 + i * (block_height + v_spacing)
                 else:
-                    prev1 = y_positions[(r-1, i*2)]
-                    prev2 = y_positions[(r-1, i*2+1)]
+                    k1 = (r-1, i*2)
+                    k2 = (r-1, i*2+1)
+                    if k1 not in y_positions or k2 not in y_positions:
+                        continue
+                    prev1 = y_positions[k1]
+                    prev2 = y_positions[k2]
                     y = (prev1 + prev2) / 2
                 y_positions[(r, i)] = y
 
-                # Градиенты
-                if r == 0:
-                    color1 = QColor(255, 90, 90, 120) if i % 2 == 0 else QColor(
-                        80, 180, 255, 120)
-                elif r == self.rounds:
-                    # Золото (только финал)
-                    color1 = QColor(255, 225, 50, 180)
+                # Градиенты (пример простой заливки)
+                color1 = QColor(255, 90, 90, 120) if i % 2 == 0 else QColor(
+                    80, 180, 255, 120)
+                rect = SelectableRect(
+                    r, i, self, x, y, block_width, block_height)
+                self.scene.addItem(rect)
+                # Обводка (желтая, если выбран)
+                if (r, i) in self.selected_indexes:
+                    rect.setPen(QPen(QColor("gold"), 4))
                 else:
-                    color1 = QColor(255, 90, 90, 120) if i % 2 == 0 else QColor(
-                        80, 180, 255, 120)
-                rect = self.scene.addRect(x, y, block_width, block_height)
-                gradient = QBrush(color1)
-                rect.setBrush(gradient)
-                rect.setPen(QPen(Qt.GlobalColor.black, 2))
+                    rect.setPen(QPen(Qt.GlobalColor.black, 2))
+                rect.setBrush(QBrush(color1))
 
-
-# Создание прямоугольника
-
-
-# # Прямоугольник
-#                 rect = self.scene.addRect(x, y, block_width, block_height)
-
-# # Горизонтальный градиент (слева направо)
-#                 gradient = QLinearGradient(x, y, x + block_width, y)
-
-#                 if r == 0:
-#                     if i % 2 == 0:
-#                         # Красный только на первых 10%
-#                         gradient.setColorAt(0.0, QColor(255, 90, 90, 255))
-#                         gradient.setColorAt(0.05, QColor(255, 90, 90, 255))
-#                         gradient.setColorAt(0.1001, QColor(255, 90, 90, 0))
-#                         gradient.setColorAt(1.0, QColor(255, 90, 90, 0))
-#                     else:
-#                         # Синий только на первых 10%
-#                         gradient.setColorAt(0.0, QColor(80, 180, 255, 255))
-#                         gradient.setColorAt(0.05, QColor(80, 180, 255, 255))
-#                         gradient.setColorAt(0.1001, QColor(80, 180, 255, 0))
-#                         gradient.setColorAt(1.0, QColor(80, 180, 255, 0))
-#                 elif r == self.rounds:
-#                     # Золотой (финал)
-#                     gradient.setColorAt(0.0, QColor(255, 225, 50, 255))
-#                     gradient.setColorAt(0.05, QColor(255, 225, 50, 255))
-#                     gradient.setColorAt(0.1001, QColor(255, 225, 50, 0))
-#                     gradient.setColorAt(1.0, QColor(255, 225, 50, 0))
-#                 else:
-#                     if i % 2 == 0:
-#                         gradient.setColorAt(0.0, QColor(255, 90, 90, 255))
-#                         gradient.setColorAt(0.05, QColor(255, 90, 90, 255))
-#                         gradient.setColorAt(0.1001, QColor(255, 90, 90, 0))
-#                         gradient.setColorAt(1.0, QColor(255, 90, 90, 0))
-#                     else:
-#                         gradient.setColorAt(0.0, QColor(80, 180, 255, 255))
-#                         gradient.setColorAt(0.05, QColor(80, 180, 255, 255))
-#                         gradient.setColorAt(0.1001, QColor(80, 180, 255, 0))
-#                         gradient.setColorAt(1.0, QColor(80, 180, 255, 0))
-
-# # Заливка
-#                 rect.setBrush(QBrush(gradient))
-#                 rect.setPen(QPen(Qt.GlobalColor.black, 2))
-
-                # Текст спортсмена/bye/победителя
-                # Текст спортсмена/bye/победителя
+                # Текст
                 text = " "
                 athlete = self.full_bracket[r][i]
                 if athlete is not None and athlete != " ":
@@ -248,6 +228,7 @@ class BracketViewerWindow(QDialog):
                 label.setDefaultTextColor(Qt.GlobalColor.black)
                 label.setPos(x + 10, y + 6)
                 positions[(r, i)] = (x, y, rect, label)
+
         # Линии между блоками
         # for r in range(self.rounds):
         #     count = self.size // (2 ** r)
@@ -277,14 +258,14 @@ class BracketViewerWindow(QDialog):
                     y1 = y + block_height // 2
                     y2 = y2 + block_height // 2
                     # Если хотя бы один блок не пустой, рисуем вертикальную
-                    if self.slots[i] or self.slots[i + 1]:
-                        self.scene.addLine(x_hor_end, y1, x_hor_end, y2, pen)
+                    # if self.slots[i] or self.slots[i + 1]:
+                    self.scene.addLine(x_hor_end, y1, x_hor_end, y2, pen)
 
-                        # 3. Горизонтальная линия к победителю (следующий раунд)
-                        next_x, next_y, _, _ = positions[(r + 1, i // 2)]
-                        y_c = (y1 + y2) // 2
-                        self.scene.addLine(
-                            x_hor_end, y_c, next_x, next_y + block_height // 2, pen)
+                    # 3. Горизонтальная линия к победителю (следующий раунд)
+                    next_x, next_y, _, _ = positions[(r + 1, i // 2)]
+                    y_c = (y1 + y2) // 2
+                    self.scene.addLine(
+                        x_hor_end, y_c, next_x, next_y + block_height // 2, pen)
         if r == self.rounds - 1:
             # Только для финала
             final_x = x0 + (self.rounds) * x_step
@@ -314,10 +295,11 @@ class BracketViewerWindow(QDialog):
 
     def swap_selected(self):
         if len(self.selected_indexes) == 2:
-            i1, i2 = self.selected_indexes
-            self.slots[i1], self.slots[i2] = self.slots[i2], self.slots[i1]
+            (r1, i1), (r2, i2) = self.selected_indexes
+            # Меняем местами любые блоки в любой стадии
+            self.full_bracket[r1][i1], self.full_bracket[r2][i2] = \
+                self.full_bracket[r2][i2], self.full_bracket[r1][i1]
             self.selected_indexes = []
-            self.make_full_bracket()
             self.draw_bracket()
         else:
             QMessageBox.warning(
